@@ -1,13 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 /**
  * Different kinds of tokens that can appear in the source code.
  */
 enum TokenType {
-    TOKEN_SKRIV,     // Like print
-    TOKEN_RETURNERA  // Like return
+    TOKEN_RETURN,
+    TOKEN_INT_LITERAL  
 };
 
 
@@ -44,11 +45,78 @@ void push_token(TokenArray *arr, Token t) {
         arr->capacity *= 2;  // Double capacity
         arr->data = realloc(arr->data, sizeof(Token) * arr->capacity);  // Reallocate memory for new capacity
     }
-    arr->data[arr->size++] = t;  // Add token
+    arr->data[arr->size] = t;
+    arr->size++;
+}
+
+char *get_token_text(char *string, int start, long length) {
+    char *tokenText = malloc(sizeof(char) * (length + 1));
+    for (int i = 0; i < length; i++)
+    {
+        tokenText[i] = string[start + i];
+    }
+    tokenText[length] = '\0';
+    return tokenText;
 }
 
 TokenArray tokenize(char *string) {
-    // TODO
+    TokenArray tokens;
+    init_array(&tokens);
+
+    long length = strlen(string);
+    int i = 0;
+
+    while (i < length)
+    {
+        char c = string[i];
+
+        // Skip whitespace 
+        if (isspace(c)) { i++; continue; }
+
+        // Identifiers / keywords - start with letter or underscore
+        if (isalpha(c))
+        {
+            int tokenStart = i;
+
+            // Letters, digits and underscores valid
+            while (i < length && (isalnum(string[i]) || string[i] == '_')) { i++; }
+
+            int tokenLength = i - tokenStart;
+            char *tokenText = get_token_text(string, tokenStart, tokenLength);
+
+            Token token;
+
+            // TOKEN_RETURNERA
+            if (strcmp(tokenText, "returnera") == 0)
+            {
+                token.text = tokenText;
+                token.type = TOKEN_RETURN;
+                push_token(&tokens, token);
+            } else {
+                fprintf(stderr, "Error");
+                free(tokenText);
+                exit(1);
+            }
+
+        // Integer literal       
+        } else if (isdigit(c))
+        {
+            int tokenStart = i;
+
+            // 0-9 valid
+            while (i < length && isdigit(c)) { i++; }
+
+            int tokenLength = i - tokenStart;
+            char *tokenText = get_token_text(string, tokenStart, tokenLength);
+            
+            Token token;
+            token.text = tokenText;
+            token.type = TOKEN_INT_LITERAL;
+            push_token(&tokens, token);
+        }
+        i++;
+    }
+    return tokens;
 }
 
 /**
@@ -63,11 +131,10 @@ TokenArray tokenize(char *string) {
  *
  * @note The caller is responsible for freeing the returned string with free().
  */
-char *read_file(char *filename) {
-    // Open file in reading mode
+char *read_file(const char *filename) {
     FILE *file;
     file = fopen(filename, "r");
-    if (file == NULL) return NULL;
+    if (file == NULL) exit(1);
 
     // Get file size
     fseek(file, 0, SEEK_END);  // Place pointer at end of file
@@ -98,11 +165,20 @@ char *read_file(char *filename) {
 int main(int argc, char *argv[]) {
     if (argc != 2)
     {
+        printf("eerrorr");
         return 1;
     }
 
     // Get file content as string
-    char *input_file = argv[1];
+    const char *input_file = argv[1];
     char *file_content = read_file(input_file);
-    printf("%s", file_content);
+    TokenArray tokens = tokenize(file_content);
+    for (int i = 0; i < tokens.size; i++)
+    {
+        printf("Token: %s (type %d)\n", tokens.data[i].text, tokens.data[i].type);
+        free(tokens.data[i].text);
+    }
+    free(tokens.data);
+    free(file_content);
+    return 0;
 }
