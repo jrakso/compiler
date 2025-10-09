@@ -1,8 +1,5 @@
 # build outputs
-*.o
-*.out
-*.exe
-a.out
+/build/
 
 # assembly files
 *.s
@@ -11,3 +8,9 @@ a.out
 # documents
 *.pdf
 *.txt
+
+# shell scripts
+*.sh
+/.vscode/
+
+*.natvis
