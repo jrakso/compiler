@@ -16,4 +16,6 @@ typedef struct {
     size_t index;
 } Parser;
 
-NodeExit *parse(const TokenArray *tokens);
+void init_parser(Parser *p, const TokenArray *tokens);
+NodeExit *parse(Parser *p);
+void ast_free(NodeExit *node);

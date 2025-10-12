@@ -4,7 +4,7 @@
 
 #include "generation.h"
 
-static void init_generator(Generator *g, NodeExit *root) {
+void init_generator(Generator *g, NodeExit *root) {
     g->root = root;
 }
 

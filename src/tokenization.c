@@ -5,12 +5,6 @@
 
 #include "tokenization.h"
 
-typedef struct {
-    const char *input;  // pointer to input string
-    size_t length;    // Number of characters in input string
-    size_t index;       // current index in string
-} Tokenizer;
-
 static void init_array(TokenArray *arr) {
     arr->size = 0;
     arr->capacity = 4;
@@ -35,12 +29,6 @@ static char *get_token_value(const char *string, size_t start, size_t end) {
     return value;
 }
 
-static void tokenizer_init(Tokenizer *t, const char *input) {
-    t->input = input;
-    t->length = strlen(input);
-    t->index = 0;
-}
-
 static char peek(const Tokenizer *t, size_t ahead) {
     if (t->index + ahead >= t->length || t->input[t->index + ahead] == '\0') {
         return '\0';
@@ -52,26 +40,30 @@ static char consume(Tokenizer *t) {
     return t->input[t->index++];
 }
 
+void tokenizer_init(Tokenizer *t, const char *input) {
+    t->input = input;
+    t->length = strlen(input);
+    t->index = 0;
+}
 
-TokenArray tokenize(const char *string) {
-    Tokenizer t;
-    tokenizer_init(&t, string);
+
+TokenArray tokenize(Tokenizer *t) {
     TokenArray tokens;
     init_array(&tokens);
     size_t ahead = 0;
 
-    while (peek(&t, ahead) != '\0') {
+    while (peek(t, ahead) != '\0') {
 
-        if (isalpha(peek(&t, ahead))) {
-            size_t start = t.index;
-            consume(&t);
-            while (isalnum(peek(&t, ahead))) {
-                consume(&t);
+        if (isalpha(peek(t, ahead))) {
+            size_t start = t->index;
+            consume(t);
+            while (isalnum(peek(t, ahead))) {
+                consume(t);
             }
-            size_t end = t.index;
-            char *value = get_token_value(string, start, end);
+            size_t end = t->index;
+            char *value = get_token_value(t->input, start, end);
             if (strcmp(value, "exit") == 0) {
-                push_token(&tokens, (Token){.type = TOKEN_EXIT, .value = value});
+                push_token(&tokens, (Token){.type = TOKEN_EXIT, .value = NULL});
                 continue;
             } else {
                 fprintf(stderr, "Error");
@@ -79,26 +71,26 @@ TokenArray tokenize(const char *string) {
             }
         }
         
-        else if (isdigit(peek(&t, ahead))) {
-            size_t start = t.index;
-            consume(&t);
-            while (isdigit(peek(&t, ahead))) {
-                consume(&t);
+        else if (isdigit(peek(t, ahead))) {
+            size_t start = t->index;
+            consume(t);
+            while (isdigit(peek(t, ahead))) {
+                consume(t);
             }
-            size_t end = t.index;
-            char *value = get_token_value(string, start, end);
+            size_t end = t->index;
+            char *value = get_token_value(t->input, start, end);
             push_token(&tokens, (Token){.type = TOKEN_INT_LITERAL, .value = value});
             continue;
         }
         
-        else if (peek(&t, ahead) == ';') {
-            consume(&t);
+        else if (peek(t, ahead) == ';') {
+            consume(t);
             push_token(&tokens, (Token){.type = TOKEN_SEMICOLON, .value = NULL});
             continue;
         }
 
-        else if (isspace(peek(&t, ahead))) {
-            consume(&t);
+        else if (isspace(peek(t, ahead))) {
+            consume(t);
             continue;
         }
 
@@ -109,4 +101,15 @@ TokenArray tokenize(const char *string) {
 
     }
     return tokens;
+}
+
+void token_array_free(TokenArray *arr) {
+    if (!arr) return;
+    for (size_t i = 0; i < arr->size; i++) {
+        free(arr->tokens[i].value);
+    }
+    free(arr->tokens);
+    arr->tokens = NULL;
+    arr->size = 0;
+    arr->capacity = 0;
 }

@@ -1,6 +1,5 @@
 #pragma once
 
-// Different Tokens
 enum TokenType {
     TOKEN_RETURN,
     TOKEN_EXIT,
@@ -9,24 +8,23 @@ enum TokenType {
     TOKEN_NULL
 };
 
-// Represents a single Token
 typedef struct {
     enum TokenType type;
     char *value;
 } Token;
 
-// Dynamic Token array
 typedef struct {
     Token *tokens;
     size_t size;
     size_t capacity;
 } TokenArray;
 
+typedef struct {
+    const char *input;
+    size_t length;
+    size_t index;
+} Tokenizer;
 
-// typedef struct {
-//     const char *input;  // pointer to input string
-//     size_t length;    // Number of characters in input string
-//     size_t index;       // current index in string
-// } Tokenizer;
-
-TokenArray tokenize(const char *string);
+void tokenizer_init(Tokenizer *t, const char *input);
+TokenArray tokenize(Tokenizer *t);
+void token_array_free(TokenArray *arr);

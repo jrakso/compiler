@@ -66,8 +66,15 @@ int main(int argc, char *argv[]) {
     // Get file content as string
     const char *input_file = argv[1];
     char *file_content = read_file(input_file);
-    TokenArray tokens = tokenize(file_content);
-    NodeExit *tree = parse(&tokens);
+
+    Tokenizer tokenizer;
+    tokenizer_init(&tokenizer, file_content);
+    TokenArray arr = tokenize(&tokenizer);
+
+    Parser parser;
+    init_parser(&parser, &arr);
+    
+    NodeExit *tree = parse(&parser);
 
     if (tree == NULL) {
         fprintf(stderr, "No exit statement found");
@@ -78,25 +85,9 @@ int main(int argc, char *argv[]) {
 
     write_file("output.asm", output);
 
-    printf("\n");
-    /* Free generated string */
     free(output);
-
-    /* Free AST (parse tree) */
-    if (tree->expr != NULL) {
-        free(tree->expr);   // free NodeExpr
-    }
-    free(tree);              // free NodeExit
-
-    /* Free token strings */
-    for (size_t i = 0; i < tokens.size; i++) {
-        free(tokens.tokens[i].value);
-    }
-
-    /* Free token array */
-    free(tokens.tokens);
-
-    /* Free file content */
+    token_array_free(&arr);
+    ast_free(tree);
     free(file_content);
 
     return 0;
