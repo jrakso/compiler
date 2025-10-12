@@ -2,9 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include "tokenization.h"
 
-char *read_file(const char *filename) {
+#include "tokenization.h"
+#include "parser.h"
+#include "generation.h"
+
+static char *read_file(const char *filename) {
     FILE *file;
     file = fopen(filename, "r");
     if (file == NULL) exit(1);
@@ -35,6 +38,25 @@ char *read_file(const char *filename) {
     return string;
 }
 
+static void write_file(const char *filename, const char *string) {
+    FILE *f = fopen(filename, "w");   // open for writing (overwrite existing)
+    if (!f) {
+        perror("fopen");
+        exit(1);
+    }
+
+    if (fputs(string, f) == EOF) {
+        perror("fputs");
+        fclose(f);
+        exit(1);
+    }
+
+    if (fclose(f) == EOF) {
+        perror("fclose");
+        exit(1);
+    }
+}
+
 int main(int argc, char *argv[]) {
     if (argc != 2) {
         printf("eerrorr");
@@ -45,12 +67,37 @@ int main(int argc, char *argv[]) {
     const char *input_file = argv[1];
     char *file_content = read_file(input_file);
     TokenArray tokens = tokenize(file_content);
-    // for (int i = 0; i < tokens.size; i++) {
-    //     printf("Token: %d (type %s)\n", tokens.data[i].type, tokens.data[i].value);
-    //     free(tokens.data[i].value);
-    // }
+    NodeExit *tree = parse(&tokens);
+
+    if (tree == NULL) {
+        fprintf(stderr, "No exit statement found");
+        exit(1);
+    }
+
+    char *output = generate(tree);
+
+    write_file("output.asm", output);
+
     printf("\n");
-    free(tokens.data);
+    /* Free generated string */
+    free(output);
+
+    /* Free AST (parse tree) */
+    if (tree->expr != NULL) {
+        free(tree->expr);   // free NodeExpr
+    }
+    free(tree);              // free NodeExit
+
+    /* Free token strings */
+    for (size_t i = 0; i < tokens.size; i++) {
+        free(tokens.tokens[i].value);
+    }
+
+    /* Free token array */
+    free(tokens.tokens);
+
+    /* Free file content */
     free(file_content);
+
     return 0;
 }

@@ -2,25 +2,32 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+
 #include "tokenization.h"
 
-void init_array(TokenArray *arr) {
+typedef struct {
+    const char *input;  // pointer to input string
+    size_t length;    // Number of characters in input string
+    size_t index;       // current index in string
+} Tokenizer;
+
+static void init_array(TokenArray *arr) {
     arr->size = 0;
     arr->capacity = 4;
-    arr->data = malloc(sizeof(Token) * arr->capacity);
+    arr->tokens = malloc(sizeof(Token) * arr->capacity);
 }
 
-void push_token(TokenArray *arr, Token token) {
+static void push_token(TokenArray *arr, Token token) {
     if (arr->size == arr->capacity)
     {
         arr->capacity *= 2;  // Double capacity
-        arr->data = realloc(arr->data, sizeof(Token) * arr->capacity);  // Reallocate memory for new capacity
+        arr->tokens = realloc(arr->tokens, sizeof(Token) * arr->capacity);  // Reallocate memory for new capacity
     }
-    arr->data[arr->size] = token;
+    arr->tokens[arr->size] = token;
     arr->size++;
 }
 
-char *get_token_value(const char *string, size_t start, size_t end) {
+static char *get_token_value(const char *string, size_t start, size_t end) {
     size_t length = end - start;
     char *value = malloc(sizeof(char) * (length + 1));
     memcpy(value, string + start, length);
@@ -28,20 +35,20 @@ char *get_token_value(const char *string, size_t start, size_t end) {
     return value;
 }
 
-void tokenizer_init(Tokenizer *t, const char *input) {
+static void tokenizer_init(Tokenizer *t, const char *input) {
     t->input = input;
     t->length = strlen(input);
     t->index = 0;
 }
 
-char peek(Tokenizer *t, int ahead) {
+static char peek(const Tokenizer *t, size_t ahead) {
     if (t->index + ahead >= t->length || t->input[t->index + ahead] == '\0') {
         return '\0';
     }
     return t->input[t->index + ahead];
 }
 
-char consume(Tokenizer *t) {
+static char consume(Tokenizer *t) {
     return t->input[t->index++];
 }
 
@@ -84,9 +91,9 @@ TokenArray tokenize(const char *string) {
             continue;
         }
         
-        else if (peek(&t, ahead) == '\n') {
+        else if (peek(&t, ahead) == ';') {
             consume(&t);
-            push_token(&tokens, (Token){.type = TOKEN_NEWLINE, .value = NULL});
+            push_token(&tokens, (Token){.type = TOKEN_SEMICOLON, .value = NULL});
             continue;
         }
 
