@@ -12,10 +12,10 @@ typedef struct {
 
 typedef struct {
     const Token *tokens;
-    size_t length;
-    size_t index;
+    size_t len;
+    size_t pos;
 } Parser;
 
-void init_parser(Parser *p, const TokenArray *tokens);
+void parser_init(Parser *p, const TokenArray *arr);
 NodeExit *parse(Parser *p);
 void ast_free(NodeExit *node);

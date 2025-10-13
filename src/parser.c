@@ -6,58 +6,69 @@
 #include "parser.h"
 #include "tokenization.h"
 
-static const Token *peek(const Parser *p, size_t ahead) {
-    if (p->index + ahead >= p->length) {
-        return NULL;
-    }
-    return &p->tokens[p->index + ahead];
+void parser_init(Parser *p, const TokenArray *arr) {
+    p->tokens = arr->tokens;
+    p->len = arr->size;
+    p->pos = 0;
 }
 
-static Token consume(Parser *p) {
-    return p->tokens[p->index++];
+static const Token *parser_peek(const Parser *p, size_t ahead) {
+    if (p->pos + ahead >= p->len) return NULL;
+    return &p->tokens[p->pos + ahead];
 }
 
-void init_parser(Parser *p, const TokenArray *tokens) {
-    p->tokens = tokens->tokens;
-    p->length = tokens->size;
-    p->index = 0;
+static Token parser_consume(Parser *p) {
+    return p->tokens[p->pos++];
 }
 
 NodeExpr *parse_expr(Parser *p) {
-    if (peek(p, 0) != NULL && peek(p, 0)->type == TOKEN_INT_LITERAL) {
+    const Token *tok = parser_peek(p, 0);
+    if (tok && tok->type == TOKEN_INT_LITERAL) {
         NodeExpr *expr_node = malloc(sizeof(NodeExpr));
-        expr_node->int_lit = consume(p);
+        if (!expr_node) {
+            perror("malloc");
+            exit(1);
+        }
+        expr_node->int_lit = parser_consume(p);
         return expr_node;
     }
-    else {
-        return NULL;
-    }
+    return NULL;
 }
 
 NodeExit *parse(Parser *p) {
     NodeExit *exit_node = malloc(sizeof(NodeExit));
-    while (peek(p, 0) != NULL) {
-        if (peek(p, 0)->type == TOKEN_EXIT) {
-            consume(p);
+    if (!exit_node) {
+        perror("malloc");
+        exit(1);
+    }
+
+    while (parser_peek(p, 0)) {
+        const Token *tok = parser_peek(p, 0);
+        if (tok->type == TOKEN_EXIT) {
+            parser_consume(p);
+
             NodeExpr *expr_node = parse_expr(p);
-            if (expr_node != NULL) {
-                exit_node->expr = expr_node;
-            }
-            else {
-                fprintf(stderr, "Invalid expression");
+            if (!expr_node) {
+                fprintf(stderr, "Expected integer literal after 'exit'\n");
+                free(exit_node);
                 exit(1);
             }
-            if (peek(p, 0) != NULL && peek(p, 0)->type == TOKEN_SEMICOLON) {
-                consume(p);
-            }
-            else {
-                fprintf(stderr, "Invalid expression");
+            exit_node->expr = expr_node;
+
+            const Token *semi = parser_peek(p, 0);
+            if (!semi || semi->type != TOKEN_SEMICOLON) {
+                fprintf(stderr, "Missing semicolon after expression\n");
+                ast_free(exit_node);
                 exit(1);
             }
-            p->index = 0;
+            parser_consume(p);
             return exit_node;
         }
+        p->pos++;
     }
+
+    free(exit_node);
+    return NULL;
 }
 
 void ast_free(NodeExit *node) {

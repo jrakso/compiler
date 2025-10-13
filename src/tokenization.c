@@ -5,111 +5,124 @@
 
 #include "tokenization.h"
 
-static void init_array(TokenArray *arr) {
+static void token_array_init(TokenArray *arr) {
     arr->size = 0;
     arr->capacity = 4;
     arr->tokens = malloc(sizeof(Token) * arr->capacity);
-}
-
-static void push_token(TokenArray *arr, Token token) {
-    if (arr->size == arr->capacity)
-    {
-        arr->capacity *= 2;  // Double capacity
-        arr->tokens = realloc(arr->tokens, sizeof(Token) * arr->capacity);  // Reallocate memory for new capacity
+    if (!arr->tokens) {
+        perror("malloc");
+        exit(1);
     }
-    arr->tokens[arr->size] = token;
-    arr->size++;
 }
 
-static char *get_token_value(const char *string, size_t start, size_t end) {
-    size_t length = end - start;
-    char *value = malloc(sizeof(char) * (length + 1));
-    memcpy(value, string + start, length);
-    value[length] = '\0';
-    return value;
-}
-
-static char peek(const Tokenizer *t, size_t ahead) {
-    if (t->index + ahead >= t->length || t->input[t->index + ahead] == '\0') {
-        return '\0';
-    }
-    return t->input[t->index + ahead];
-}
-
-static char consume(Tokenizer *t) {
-    return t->input[t->index++];
-}
-
-void tokenizer_init(Tokenizer *t, const char *input) {
-    t->input = input;
-    t->length = strlen(input);
-    t->index = 0;
-}
-
-
-TokenArray tokenize(Tokenizer *t) {
-    TokenArray tokens;
-    init_array(&tokens);
-    size_t ahead = 0;
-
-    while (peek(t, ahead) != '\0') {
-
-        if (isalpha(peek(t, ahead))) {
-            size_t start = t->index;
-            consume(t);
-            while (isalnum(peek(t, ahead))) {
-                consume(t);
-            }
-            size_t end = t->index;
-            char *value = get_token_value(t->input, start, end);
-            if (strcmp(value, "exit") == 0) {
-                push_token(&tokens, (Token){.type = TOKEN_EXIT, .value = NULL});
-                continue;
-            } else {
-                fprintf(stderr, "Error");
-                exit(1);
-            }
-        }
-        
-        else if (isdigit(peek(t, ahead))) {
-            size_t start = t->index;
-            consume(t);
-            while (isdigit(peek(t, ahead))) {
-                consume(t);
-            }
-            size_t end = t->index;
-            char *value = get_token_value(t->input, start, end);
-            push_token(&tokens, (Token){.type = TOKEN_INT_LITERAL, .value = value});
-            continue;
-        }
-        
-        else if (peek(t, ahead) == ';') {
-            consume(t);
-            push_token(&tokens, (Token){.type = TOKEN_SEMICOLON, .value = NULL});
-            continue;
-        }
-
-        else if (isspace(peek(t, ahead))) {
-            consume(t);
-            continue;
-        }
-
-        else {
-            fprintf(stderr, "Error");
+static void token_array_push(TokenArray *arr, Token t) {
+    if (arr->size == arr->capacity) {
+        arr->capacity *= 2;
+        Token *new_tokens = realloc(arr->tokens, sizeof(Token) * arr->capacity);
+        if (!new_tokens) {
+            perror("realloc");
+            token_array_free(arr);
             exit(1);
         }
-
+        arr->tokens = new_tokens;
     }
-    return tokens;
+    arr->tokens[arr->size++] = t;
 }
 
 void token_array_free(TokenArray *arr) {
     if (!arr) return;
-    for (size_t i = 0; i < arr->size; i++) {
+    for (size_t i = 0; i < arr->size; i++)
         free(arr->tokens[i].value);
-    }
     free(arr->tokens);
     arr->tokens = NULL;
     arr->size = 0;
     arr->capacity = 0;
+}
+
+static char *copy_token_value(const char *src, size_t start, size_t end) {
+    size_t len = end - start;
+    char *value = malloc(len + 1);
+    if (!value) {
+        perror("malloc");
+        exit(1);
+    }
+    memcpy(value, src + start, len);
+    value[len] = '\0';
+    return value;
+}
+
+static char tokenizer_peek(const Tokenizer *t, size_t ahead) {
+    if (t->pos + ahead >= t->len || t->src[t->pos + ahead] == '\0') {
+        return '\0';
+    }
+    return t->src[t->pos + ahead];
+}
+
+static char tokenizer_consume(Tokenizer *t) {
+    return t->src[t->pos++];
+}
+
+void tokenizer_init(Tokenizer *t, const char *src) {
+    t->src = src;
+    t->len = strlen(src);
+    t->pos = 0;
+}
+
+
+
+TokenArray tokenize(Tokenizer *t) {
+    TokenArray tokens;
+    token_array_init(&tokens);
+
+    while (tokenizer_peek(t, 0) != '\0') {
+
+        if (isalpha(tokenizer_peek(t, 0))) {
+            size_t start = t->pos;
+            tokenizer_consume(t);
+            while (isalnum(tokenizer_peek(t, 0)))
+                tokenizer_consume(t);
+            size_t end = t->pos;
+            char *value = copy_token_value(t->src, start, end);
+
+            if (strcmp(value, "exit") == 0) {
+                token_array_push(&tokens, (Token){ .type = TOKEN_EXIT, .value = NULL });
+                free(value); // prevent leak
+            } else {
+                fprintf(stderr, "Unexpected keyword '%s'\n", value);
+                free(value);
+                token_array_free(&tokens);
+                exit(1);
+            }
+            continue;
+        }
+
+        if (isdigit(tokenizer_peek(t, 0))) {
+            size_t start = t->pos;
+            tokenizer_consume(t);
+            while (isdigit(tokenizer_peek(t, 0)))
+                tokenizer_consume(t);
+            size_t end = t->pos;
+            char *value = copy_token_value(t->src, start, end);
+            token_array_push(&tokens, (Token){ .type = TOKEN_INT_LITERAL, .value = value });
+            continue;
+        }
+
+        if (tokenizer_peek(t, 0) == ';') {
+            tokenizer_consume(t);
+            token_array_push(&tokens, (Token){ .type = TOKEN_SEMICOLON, .value = NULL });
+            continue;
+        }
+
+        if (isspace(tokenizer_peek(t, 0))) {
+            tokenizer_consume(t);
+            continue;
+        }
+
+        fprintf(stderr, "Unexpected character '%c' at index %zu\n",
+                tokenizer_peek(t, 0), t->pos);
+        token_array_free(&tokens);
+        exit(1);
+    }
+
+    return tokens;
 }

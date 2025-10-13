@@ -4,13 +4,11 @@
 
 #include "generation.h"
 
-void init_generator(Generator *g, NodeExit *root) {
+void generator_init(Generator *g, NodeExit *root) {
     g->root = root;
 }
 
-char *generate(NodeExit *root) {
-    Generator g;
-    init_generator(&g, root);
+char *generate(Generator *g) {
     const char *template =
         "global _start\n"
         "_start:\n"
@@ -18,17 +16,16 @@ char *generate(NodeExit *root) {
         "    mov rdi, %s\n"
         "    syscall\n";
 
-    const char *value = g.root->expr->int_lit.value;
+    const char *value = g->root->expr->int_lit.value;
 
     size_t needed = snprintf(NULL, 0, template, value) + 1;
 
     char *result = malloc(needed);
     if (!result) {
-        fprintf(stderr, "Out of memory\n");
+        perror("malloc");
         exit(1);
     }
 
     snprintf(result, needed, template, value);
-
     return result;
 }

@@ -1,15 +1,17 @@
 #pragma once
 
-enum TokenType {
+#include <stddef.h>
+
+typedef enum {
     TOKEN_RETURN,
     TOKEN_EXIT,
     TOKEN_INT_LITERAL,
     TOKEN_SEMICOLON,
     TOKEN_NULL
-};
+} TokenType;
 
 typedef struct {
-    enum TokenType type;
+    TokenType type;
     char *value;
 } Token;
 
@@ -20,11 +22,11 @@ typedef struct {
 } TokenArray;
 
 typedef struct {
-    const char *input;
-    size_t length;
-    size_t index;
+    const char *src;
+    size_t len;
+    size_t pos;
 } Tokenizer;
 
-void tokenizer_init(Tokenizer *t, const char *input);
+void tokenizer_init(Tokenizer *t, const char *src);
 TokenArray tokenize(Tokenizer *t);
 void token_array_free(TokenArray *arr);
