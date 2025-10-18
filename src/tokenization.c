@@ -8,7 +8,7 @@
 static void token_array_init(TokenArray *arr) {
     arr->size = 0;
     arr->capacity = 4;
-    arr->tokens = malloc(sizeof(Token) * arr->capacity);
+    arr->tokens = malloc(sizeof(Token) * arr->capacity);  // caller frees with token_array_free
     if (!arr->tokens) {
         perror("malloc");
         exit(1);
@@ -32,8 +32,8 @@ static void token_array_push(TokenArray *arr, Token t) {
 void token_array_free(TokenArray *arr) {
     if (!arr) return;
     for (size_t i = 0; i < arr->size; i++)
-        free(arr->tokens[i].value);
-    free(arr->tokens);
+        free(arr->tokens[i].value);  // frees values allocated by get_token_value
+    free(arr->tokens);  // frees tokens allocated in token_array_init
     arr->tokens = NULL;
     arr->size = 0;
     arr->capacity = 0;
@@ -41,7 +41,7 @@ void token_array_free(TokenArray *arr) {
 
 static char *copy_token_value(const char *src, size_t start, size_t end) {
     size_t len = end - start;
-    char *value = malloc(len + 1);
+    char *value = malloc(len + 1);  // caller frees with token_array_free
     if (!value) {
         perror("malloc");
         exit(1);
@@ -51,11 +51,11 @@ static char *copy_token_value(const char *src, size_t start, size_t end) {
     return value;
 }
 
-static char tokenizer_peek(const Tokenizer *t, size_t ahead) {
-    if (t->pos + ahead >= t->len || t->src[t->pos + ahead] == '\0') {
+static char tokenizer_peek(const Tokenizer *t, size_t offset) {
+    if (t->pos + offset >= t->len || t->src[t->pos + offset] == '\0') {
         return '\0';
     }
-    return t->src[t->pos + ahead];
+    return t->src[t->pos + offset];
 }
 
 static char tokenizer_consume(Tokenizer *t) {
@@ -68,11 +68,9 @@ void tokenizer_init(Tokenizer *t, const char *src) {
     t->pos = 0;
 }
 
-
-
 TokenArray tokenize(Tokenizer *t) {
     TokenArray tokens;
-    token_array_init(&tokens);
+    token_array_init(&tokens);  // caller frees with token_array_free
 
     while (tokenizer_peek(t, 0) != '\0') {
 

@@ -32,7 +32,7 @@ static char *read_file(const char *filename) {
         exit(1);
     }
 
-    char *buffer = malloc(file_size + 2);
+    char *buffer = malloc(file_size + 2);  // caller frees
     if (!buffer) {
         perror("malloc");
         fclose(file);
@@ -72,15 +72,16 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    char *source = read_file(argv[1]);
+    char *source = read_file(argv[1]);  // caller frees
 
     Tokenizer tokenizer;
     tokenizer_init(&tokenizer, source);
-    TokenArray tokens = tokenize(&tokenizer);
+    TokenArray tokens = tokenize(&tokenizer);  // caller frees with token_array_free
 
     Parser parser;
     parser_init(&parser, &tokens);
-    NodeExit *tree = parse(&parser);
+    NodeExit *tree = parse(&parser);  // caller frees with ast_free
+
     if (!tree) {
         fprintf(stderr, "No 'exit' statement found\n");
         token_array_free(&tokens);
@@ -90,14 +91,14 @@ int main(int argc, char *argv[]) {
 
     Generator generator;
     generator_init(&generator, tree);
-    char *output = generate(&generator);
+    char *output = generate(&generator);  // caller frees
 
     write_file("output.asm", output);
 
-    free(output);
-    ast_free(tree);
-    token_array_free(&tokens);
-    free(source);
+    free(output);  // frees memory allocated by generate
+    ast_free(tree);  // frees AST allocated by parse
+    token_array_free(&tokens);  // frees tokens and values allocated by tokenize
+    free(source);  // frees buffer allocated by read_file
 
     return 0;
 }

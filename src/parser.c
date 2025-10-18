@@ -12,19 +12,19 @@ void parser_init(Parser *p, const TokenArray *arr) {
     p->pos = 0;
 }
 
-static const Token *parser_peek(const Parser *p, size_t ahead) {
-    if (p->pos + ahead >= p->len) return NULL;
-    return &p->tokens[p->pos + ahead];
+static const Token *parser_peek(const Parser *p, size_t offset) {
+    if (p->pos + offset >= p->len) return NULL;
+    return &p->tokens[p->pos + offset];
 }
 
-static Token parser_consume(Parser *p) {
-    return p->tokens[p->pos++];
+static const Token *parser_consume(Parser *p) {
+    return &p->tokens[p->pos++];
 }
 
 NodeExpr *parse_expr(Parser *p) {
     const Token *tok = parser_peek(p, 0);
     if (tok && tok->type == TOKEN_INT_LITERAL) {
-        NodeExpr *expr_node = malloc(sizeof(NodeExpr));
+        NodeExpr *expr_node = malloc(sizeof(NodeExpr));  // caller frees with ast_free
         if (!expr_node) {
             perror("malloc");
             exit(1);
@@ -36,7 +36,7 @@ NodeExpr *parse_expr(Parser *p) {
 }
 
 NodeExit *parse(Parser *p) {
-    NodeExit *exit_node = malloc(sizeof(NodeExit));
+    NodeExit *exit_node = malloc(sizeof(NodeExit));  // caller frees with ast_free
     if (!exit_node) {
         perror("malloc");
         exit(1);
@@ -75,7 +75,7 @@ void ast_free(NodeExit *node) {
     if (!node) return;
 
     if (node->expr) {
-        free(node->expr);
+        free(node->expr);  // frees NodeExpr allocated by parse_expr
     }
-    free(node);
+    free(node);  // frees NodeExit allocated by parse
 }

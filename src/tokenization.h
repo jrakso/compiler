@@ -27,6 +27,6 @@ typedef struct {
     size_t pos;
 } Tokenizer;
 
-void tokenizer_init(Tokenizer *t, const char *src);
-TokenArray tokenize(Tokenizer *t);
-void token_array_free(TokenArray *arr);
+void tokenizer_init(Tokenizer *t, const char *src);  // does not allocate
+TokenArray tokenize(Tokenizer *t);  // caller frees with token_array_free
+void token_array_free(TokenArray *arr);  // frees tokens and token values

@@ -4,7 +4,7 @@
 
 #include "generation.h"
 
-void generator_init(Generator *g, NodeExit *root) {
+void generator_init(Generator *g, const NodeExit *root) {
     g->root = root;
 }
 
@@ -16,11 +16,11 @@ char *generate(Generator *g) {
         "    mov rdi, %s\n"
         "    syscall\n";
 
-    const char *value = g->root->expr->int_lit.value;
+    const char *value = g->root->expr->int_lit->value;
 
     size_t needed = snprintf(NULL, 0, template, value) + 1;
 
-    char *result = malloc(needed);
+    char *result = malloc(needed);  // caller frees
     if (!result) {
         perror("malloc");
         exit(1);
