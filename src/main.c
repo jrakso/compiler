@@ -9,34 +9,34 @@ static char *read_file(const char *filename) {
     FILE *file = fopen(filename, "r");
     if (!file) {
         perror("fopen");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     if (fseek(file, 0, SEEK_END) != 0) {
         perror("fseek");
         fclose(file);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     long pos = ftell(file);
     if (pos < 0) {
         perror("ftell");
         fclose(file);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     size_t file_size = (size_t)pos;
 
     if (fseek(file, 0, SEEK_SET) != 0) {
         perror("fseek");
         fclose(file);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     char *buffer = malloc(file_size + 2);  // caller frees
     if (!buffer) {
         perror("malloc");
         fclose(file);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     size_t read = fread(buffer, 1, file_size, file);
@@ -51,18 +51,18 @@ static void write_file(const char *filename, const char *output) {
     FILE *f = fopen(filename, "w");
     if (!f) {
         perror("fopen");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     if (fputs(output, f) == EOF) {
         perror("fputs");
         fclose(f);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     if (fclose(f) == EOF) {
         perror("fclose");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 }
 
@@ -72,33 +72,33 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    char *source = read_file(argv[1]);  // caller frees
+    // char *source = read_file(argv[1]);  // caller frees
 
-    Tokenizer tokenizer;
-    tokenizer_init(&tokenizer, source);
-    TokenArray tokens = tokenize(&tokenizer);  // caller frees with token_array_free
+    // Tokenizer tokenizer;
+    // tokenizer_init(&tokenizer, source);
+    // TokenArray tokens = tokenize(&tokenizer);  // caller frees with token_array_free
 
-    Parser parser;
-    parser_init(&parser, &tokens);
-    NodeExit *tree = parse(&parser);  // caller frees with ast_free
+    // Parser parser;
+    // parser_init(&parser, &tokens);
+    // NodeExit *tree = parse(&parser);  // caller frees with ast_free
 
-    if (!tree) {
-        fprintf(stderr, "No 'exit' statement found\n");
-        token_array_free(&tokens);
-        free(source);
-        return 1;
-    }
+    // if (!tree) {
+    //     fprintf(stderr, "No 'exit' statement found\n");
+    //     token_array_free(&tokens);
+    //     free(source);
+    //     return 1;
+    // }
 
-    Generator generator;
-    generator_init(&generator, tree);
-    char *output = generate(&generator);  // caller frees
+    // Generator generator;
+    // generator_init(&generator, tree);
+    // char *output = generate(&generator);  // caller frees
 
-    write_file("output.asm", output);
+    // write_file("output.asm", output);
 
-    free(output);  // frees memory allocated by generate
-    ast_free(tree);  // frees AST allocated by parse
-    token_array_free(&tokens);  // frees tokens and values allocated by tokenize
-    free(source);  // frees buffer allocated by read_file
+    // free(output);  // frees memory allocated by generate
+    // ast_free(tree);  // frees AST allocated by parse
+    // token_array_free(&tokens);  // frees tokens and values allocated by tokenize
+    // free(source);  // frees buffer allocated by read_file
 
     return 0;
 }

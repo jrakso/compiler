@@ -2,12 +2,20 @@
 
 #include <stddef.h>
 
+#define START        0
+#define PEEK_CURRENT 0
+#define PEEK_NEXT    1
+
 typedef enum {
-    TOKEN_RETURN,
+    TOKEN_INVALID,
     TOKEN_EXIT,
     TOKEN_INT_LITERAL,
     TOKEN_SEMICOLON,
-    TOKEN_NULL
+    TOKEN_OPEN_PAREN,
+    TOKEN_CLOSE_PAREN,
+    TOKEN_IDENT,
+    TOKEN_LET,
+    TOKEN_EQ
 } TokenType;
 
 typedef struct {
@@ -27,6 +35,5 @@ typedef struct {
     size_t pos;
 } Tokenizer;
 
-void tokenizer_init(Tokenizer *t, const char *src);  // does not allocate
-TokenArray tokenize(Tokenizer *t);  // caller frees with token_array_free
+TokenArray tokenize(const char *src);  // caller frees with token_array_free
 void token_array_free(TokenArray *arr);  // frees tokens and token values

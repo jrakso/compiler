@@ -11,18 +11,18 @@ static void token_array_init(TokenArray *arr) {
     arr->tokens = malloc(sizeof(Token) * arr->capacity);  // caller frees with token_array_free
     if (!arr->tokens) {
         perror("malloc");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 }
 
-static void token_array_push(TokenArray *arr, Token t) {
+static void token_array_append(TokenArray *arr, Token t) {
     if (arr->size == arr->capacity) {
         arr->capacity *= 2;
         Token *new_tokens = realloc(arr->tokens, sizeof(Token) * arr->capacity);
         if (!new_tokens) {
             perror("realloc");
             token_array_free(arr);
-            exit(1);
+            exit(EXIT_FAILURE);
         }
         arr->tokens = new_tokens;
     }
@@ -44,7 +44,7 @@ static char *copy_token_value(const char *src, size_t start, size_t end) {
     char *value = malloc(len + 1);  // caller frees with token_array_free
     if (!value) {
         perror("malloc");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     memcpy(value, src + start, len);
     value[len] = '\0';
@@ -54,73 +54,82 @@ static char *copy_token_value(const char *src, size_t start, size_t end) {
 static char tokenizer_peek(const Tokenizer *t, size_t offset) {
     if (t->pos + offset >= t->len || t->src[t->pos + offset] == '\0') {
         return '\0';
+    } else {
+        return t->src[t->pos + offset];
     }
-    return t->src[t->pos + offset];
 }
 
 static char tokenizer_consume(Tokenizer *t) {
     return t->src[t->pos++];
 }
 
-void tokenizer_init(Tokenizer *t, const char *src) {
-    t->src = src;
-    t->len = strlen(src);
-    t->pos = 0;
-}
-
-TokenArray tokenize(Tokenizer *t) {
+TokenArray tokenize(const char *src) {
+    Tokenizer t = { .src = src, .len = strlen(src), .pos = START };
     TokenArray tokens;
     token_array_init(&tokens);  // caller frees with token_array_free
 
-    while (tokenizer_peek(t, 0) != '\0') {
+    while (tokenizer_peek(&t, PEEK_CURRENT) != '\0') {
+        char c = tokenizer_peek(&t, PEEK_CURRENT);
 
-        if (isalpha(tokenizer_peek(t, 0))) {
-            size_t start = t->pos;
-            tokenizer_consume(t);
-            while (isalnum(tokenizer_peek(t, 0)))
-                tokenizer_consume(t);
-            size_t end = t->pos;
-            char *value = copy_token_value(t->src, start, end);
+        if (isalpha(c)) {
+            size_t start = t.pos;
+            tokenizer_consume(&t);
+            while (isalnum(tokenizer_peek(&t, PEEK_CURRENT)))
+                tokenizer_consume(&t);
+            size_t end = t.pos;
+            char *value = copy_token_value(t.src, start, end);
 
             if (strcmp(value, "exit") == 0) {
-                token_array_push(&tokens, (Token){ .type = TOKEN_EXIT, .value = NULL });
-                free(value); // prevent leak
+                token_array_append(&tokens, (Token){ .type = TOKEN_EXIT, .value = NULL });
+                free(value);  // prevent leak
+            } else if (strcmp(value, "let") == 0) {
+                token_array_append(&tokens, (Token){ .type = TOKEN_LET, .value = NULL });
+                free(value);  // prevent leak)
             } else {
-                fprintf(stderr, "Unexpected keyword '%s'\n", value);
-                free(value);
-                token_array_free(&tokens);
-                exit(1);
+                token_array_append(&tokens, (Token){ .type = TOKEN_IDENT, .value = value });
             }
-            continue;
         }
 
-        if (isdigit(tokenizer_peek(t, 0))) {
-            size_t start = t->pos;
-            tokenizer_consume(t);
-            while (isdigit(tokenizer_peek(t, 0)))
-                tokenizer_consume(t);
-            size_t end = t->pos;
-            char *value = copy_token_value(t->src, start, end);
-            token_array_push(&tokens, (Token){ .type = TOKEN_INT_LITERAL, .value = value });
-            continue;
+        else if (isdigit(c)) {
+            size_t start = t.pos;
+            tokenizer_consume(&t);
+            while (isdigit(tokenizer_peek(&t, PEEK_CURRENT)))
+                tokenizer_consume(&t);
+            size_t end = t.pos;
+            char *value = copy_token_value(t.src, start, end);
+            token_array_append(&tokens, (Token){ .type = TOKEN_INT_LITERAL, .value = value });
         }
 
-        if (tokenizer_peek(t, 0) == ';') {
-            tokenizer_consume(t);
-            token_array_push(&tokens, (Token){ .type = TOKEN_SEMICOLON, .value = NULL });
-            continue;
+        else if (c == '(') {
+            tokenizer_consume(&t);
+            token_array_append(&tokens, (Token){ .type = TOKEN_OPEN_PAREN, .value = NULL });
         }
 
-        if (isspace(tokenizer_peek(t, 0))) {
-            tokenizer_consume(t);
-            continue;
+        else if (c == ')') {
+            tokenizer_consume(&t);
+            token_array_append(&tokens, (Token){ .type = TOKEN_CLOSE_PAREN, .value = NULL });
         }
 
-        fprintf(stderr, "Unexpected character '%c' at index %zu\n",
-                tokenizer_peek(t, 0), t->pos);
-        token_array_free(&tokens);
-        exit(1);
+        else if (c == '=') {
+            tokenizer_consume(&t);
+            token_array_append(&tokens, (Token){ .type = TOKEN_EQ, .value = NULL });
+        }
+
+        else if (c == ';') {
+            tokenizer_consume(&t);
+            token_array_append(&tokens, (Token){ .type = TOKEN_SEMICOLON, .value = NULL });
+        }
+
+        else if (isspace(c)) {
+            tokenizer_consume(&t);
+        }
+
+        else {
+            fprintf(stderr, "Unexpected character '%c' at index %zu\n",
+                    tokenizer_peek(&t, PEEK_CURRENT), t.pos);
+            token_array_free(&tokens);
+            exit(EXIT_FAILURE);
+        }
     }
-
     return tokens;
 }
