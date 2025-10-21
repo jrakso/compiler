@@ -69,7 +69,7 @@ TokenArray tokenize(const char *src) {
     token_array_init(&tokens);  // caller frees with token_array_free
 
     while (tokenizer_peek(&t, PEEK_CURRENT) != '\0') {
-        char c = tokenizer_peek(&t, PEEK_CURRENT);
+        const char c = tokenizer_peek(&t, PEEK_CURRENT);
 
         if (isalpha(c)) {
             size_t start = t.pos;

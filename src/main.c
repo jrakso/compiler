@@ -72,33 +72,26 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // char *source = read_file(argv[1]);  // caller frees
+    char *src = read_file(argv[1]);  // caller frees
 
-    // Tokenizer tokenizer;
-    // tokenizer_init(&tokenizer, source);
-    // TokenArray tokens = tokenize(&tokenizer);  // caller frees with token_array_free
+    TokenArray tokens = tokenize(src);  // caller frees with token_array_free
 
-    // Parser parser;
-    // parser_init(&parser, &tokens);
-    // NodeExit *tree = parse(&parser);  // caller frees with ast_free
+    Parser parser;
+    parser_init(&parser, &tokens);
+    NodeProg prog = parse_prog(&parser);
+    if (!prog.stmts.stmts) {
+        return 1;
+    }
 
-    // if (!tree) {
-    //     fprintf(stderr, "No 'exit' statement found\n");
-    //     token_array_free(&tokens);
-    //     free(source);
-    //     return 1;
-    // }
+    Generator g;
+    generator_init(&g, &prog);
+    char *output = gen_prog(&g);
 
-    // Generator generator;
-    // generator_init(&generator, tree);
-    // char *output = generate(&generator);  // caller frees
+    write_file("output.asm", output);
 
-    // write_file("output.asm", output);
-
-    // free(output);  // frees memory allocated by generate
-    // ast_free(tree);  // frees AST allocated by parse
-    // token_array_free(&tokens);  // frees tokens and values allocated by tokenize
-    // free(source);  // frees buffer allocated by read_file
+    free(output);  // frees memory allocated by generate
+    token_array_free(&tokens);  // frees tokens and values allocated by tokenize
+    free(src);  // frees buffer allocated by read_file
 
     return 0;
 }

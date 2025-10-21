@@ -54,7 +54,7 @@ typedef struct {
 } NodeStmtArray;
 
 typedef struct {
-    NodeStmtArray *stmts;
+    NodeStmtArray stmts;
 } NodeProg;
 
 typedef struct {
@@ -63,6 +63,5 @@ typedef struct {
     size_t pos;
 } Parser;
 
-// void parser_init(Parser *p, const TokenArray *arr);  // does not allocate
-// NodeExit *parse(Parser *p);  // caller frees with ast_free
-// void ast_free(NodeExit *node);  // frees AST allocated by parse
+void parser_init(Parser *p, const TokenArray *arr);
+NodeProg parse_prog(Parser *p);

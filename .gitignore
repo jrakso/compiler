@@ -1,5 +1,7 @@
 # build outputs
 /build/
+*.o
+*.out
 
 # assembly files
 *.s

@@ -35,28 +35,28 @@ void sb_init(StringBuilder *sb) {
 void sb_append(StringBuilder *sb, const char *str) {
     size_t len = strlen(str);
     sb_reserve(sb, len);
-    memcpy(sb->data + sb->len, str, len + 1);  // copy including '\0'
+    memcpy(sb->data + sb->len, str, len + 1);
     sb->len += len;
+}
+
+void sb_append_fmtv(StringBuilder *sb, const char *fmt, va_list args) {
+    va_list args_copy;
+    va_copy(args_copy, args);
+    int len = vsnprintf(NULL, 0, fmt, args_copy);
+    va_end(args_copy);
+    if (len < 0) return;
+    char *buf = malloc(len + 1);
+    if (!buf) return;
+    vsnprintf(buf, len + 1, fmt, args);
+    sb_append(sb, buf);
+    free(buf);
 }
 
 void sb_append_fmt(StringBuilder *sb, const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
-
-    va_list copy;
-    va_copy(copy, args);
-    int needed = vsnprintf(NULL, 0, fmt, copy);
-    va_end(copy);
-
-    if (needed < 0) {
-        perror("vsnprintf");
-        exit(EXIT_FAILURE);
-    }
-
-    sb_reserve(sb, (size_t)needed);
-    vsnprintf(sb->data + sb->len, needed + 1, fmt, args);
+    sb_append_fmtv(sb, fmt, args);
     va_end(args);
-    sb->len += (size_t)needed;
 }
 
 const char *sb_data(const StringBuilder *sb) {

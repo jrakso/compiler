@@ -12,7 +12,7 @@ void parser_init(Parser *p, const TokenArray *arr) {
     p->pos = 0;
 }
 
-static const Token parser_peek(const Parser *p, size_t offset) {
+static Token parser_peek(const Parser *p, size_t offset) {
     if (p->pos + offset >= p->size) {
         return (Token) { .type = TOKEN_INVALID };
     }
@@ -23,7 +23,7 @@ static Token parser_consume(Parser *p) {
     return p->tokens[p->pos++];
 }
 
-NodeExpr parse_expr(Parser *p) {
+static NodeExpr parse_expr(Parser *p) {
     if (parser_peek(p, PEEK_CURRENT).type == TOKEN_INT_LITERAL) {
         return (NodeExpr) { .type = EXPR_INT_LIT, .data.int_lit = (NodeExprLit) { .int_lit = parser_consume(p) } };
     }
@@ -35,7 +35,7 @@ NodeExpr parse_expr(Parser *p) {
     }
 }
 
-NodeStmt parse_stmt(Parser *p) {
+static NodeStmt parse_stmt(Parser *p) {
     const Token t = parser_peek(p, PEEK_CURRENT);
     parser_consume(p);
 
@@ -159,6 +159,10 @@ static void node_stmt_array_free(NodeStmtArray *arr) {
 }
 
 NodeProg parse_prog(Parser *p) {
+    if (!p) {
+        return (NodeProg) {0};
+    }
+
     NodeProg prog;
     node_stmt_array_init(&prog.stmts);  // caller frees with node_stmt_array_free
 
