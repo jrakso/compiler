@@ -5,35 +5,39 @@
 
 #include "generation.h"
 
-static void add_var(Generator *g, const char *name, Var var) {
-    VarEntry *entry = malloc(sizeof(VarEntry));
-    entry->name = strdup(name);
-    entry->var = var;
-    HASH_ADD_KEYPTR(hh, g->vars, entry->name, strlen(entry->name), entry);
-}
+static void var_append(Generator *g, const char *name) {
+    VariableTable *t = &g->vars;
 
-static Var *get_var(Generator *g, const char *name) {
-    VarEntry *entry;
-    HASH_FIND_STR(g->vars, name, entry);
-    return entry ? &entry->var : NULL;
-}
-
-static bool contains_var(Generator *g, const char *name) {
-    VarEntry *entry;
-    HASH_FIND_STR(g->vars, name, entry);
-    return entry != NULL;
-}
-
-void generator_init(Generator *g, NodeProg *prog) {
-    g->prog = prog;
-    g->sb = malloc(sizeof(StringBuilder));
-    if (!g->sb) {
-        perror("malloc");
-        exit(EXIT_FAILURE);
+    if (t->size == t->capacity) {
+        t->capacity *= 2;
+        t->vars = realloc(t->vars, t->capacity * sizeof(Variable));
+        if (!t->vars) {
+            perror("realloc");
+            exit(EXIT_FAILURE);
+        }
     }
-    sb_init(g->sb);
-    g->stack_size = 0;
-    g->vars = NULL;
+
+    t->vars[t->size].name = strdup(name);
+    t->vars[t->size].stack_loc = g->stack_size;
+    t->size++;
+}
+
+static Variable *var_find(Generator *g, const char *name) {
+    for (size_t i = 0; g->vars.size; i++) {
+        if (strcmp(g->vars.vars[i].name, name) == 0) {
+            return &g->vars.vars[i];
+        }
+    }
+    return NULL;
+}
+
+static bool var_contains(Generator *g, const char *name) {
+    for (size_t i = 0; i < g->vars.size; i++) {
+        if (strcmp(g->vars.vars[i].name, name) == 0) {
+            return true;
+        }
+    }
+    return false;
 }
 
 static void push(Generator *g, const char *fmt, ...) {
@@ -51,6 +55,18 @@ static void pop(Generator *g, const char *reg) {
     g->stack_size--;
 }
 
+void generator_init(Generator *g, NodeProg *prog) {
+    g->prog = prog;
+    g->sb = malloc(sizeof(StringBuilder));
+    if (!g->sb) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+    sb_init(g->sb);
+    g->stack_size = 0;
+    g->vars = (VariableTable ){ .capacity = 0, .size = 0, .vars = NULL };
+}
+
 static void gen_expr(Generator *g, const NodeExpr *expr) {
     switch (expr->type) {
 
@@ -60,11 +76,11 @@ static void gen_expr(Generator *g, const NodeExpr *expr) {
             break;
 
         case EXPR_IDENT:
-            if (!contains_var(g, expr->data.ident.ident.value)) {
+            if (!var_contains(g, expr->data.ident.ident.value)) {
                 fprintf(stderr, "Undeclared identifier: %s\n", expr->data.ident.ident.value);
                 exit(EXIT_FAILURE);
             }
-            const Var *var = get_var(g, expr->data.ident.ident.value);
+            const Variable *var = var_find(g, expr->data.ident.ident.value);
             push(g, "QWORD [rsp + %zu]", (g->stack_size - var->stack_loc - 1)*8);
             break;
 
@@ -84,11 +100,11 @@ static void gen_stmt(Generator *g, const NodeStmt *stmt) {
             break;
 
         case STMT_LET:
-            if (contains_var(g, stmt->data.let.ident.value)) {
+            if (var_contains(g, stmt->data.let.ident.value)) {
                 fprintf(stderr, "Identifier already used: %s\n", stmt->data.let.ident.value);
                 exit(EXIT_FAILURE);
             }
-            add_var(g, stmt->data.let.ident.value, (Var) { .stack_loc = g->stack_size });
+            var_append(g, stmt->data.let.ident.value);
             gen_expr(g, &stmt->data.let.expr);
             break;
 

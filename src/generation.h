@@ -2,23 +2,23 @@
 
 #include "parser.h"
 #include "strbuilder.h"
-#include "uthash.h"
-
-typedef struct {
-    size_t stack_loc;
-} Var;
 
 typedef struct {
     char *name;
-    Var var;
-    UT_hash_handle hh;
-} VarEntry;
+    size_t stack_loc;
+} Variable;
+
+typedef struct {
+    Variable *vars;
+    size_t size;
+    size_t capacity;
+} VariableTable;
 
 typedef struct {
     NodeProg *prog;
     StringBuilder *sb;
     size_t stack_size;
-    VarEntry *vars;
+    VariableTable vars;
 } Generator;
 
 void generator_init(Generator *g, NodeProg *prog);
