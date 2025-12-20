@@ -55,7 +55,12 @@ static void pop(Generator *g, const char *reg) {
     g->stack_size--;
 }
 
-void generator_init(Generator *g, NodeProg *prog) {
+Generator *generator_create(NodeProg *prog) {
+    Generator *g = malloc(sizeof(Generator));
+    if (!g) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
     g->prog = prog;
     g->sb = malloc(sizeof(StringBuilder));
     if (!g->sb) {
@@ -67,20 +72,26 @@ void generator_init(Generator *g, NodeProg *prog) {
     g->vars = (VariableTable ){ .capacity = 0, .size = 0, .vars = NULL };
 }
 
+void generator_destroy(Generator *g) {
+    sb_free(g->sb);
+    free(g->sb);
+    free(g);
+}
+
 static void gen_expr(Generator *g, const NodeExpr *expr) {
     switch (expr->type) {
 
         case EXPR_INT_LIT:
-            sb_append_fmt(g->sb, "\tmov rax, %s\n", expr->data.int_lit.int_lit.value);
+            sb_append_fmt(g->sb, "\tmov rax, %s\n", expr->data.int_lit->int_lit.value);
             push(g, "rax");
             break;
 
         case EXPR_IDENT:
-            if (!var_contains(g, expr->data.ident.ident.value)) {
-                fprintf(stderr, "Undeclared identifier: %s\n", expr->data.ident.ident.value);
+            if (!var_contains(g, expr->data.ident->ident.value)) {
+                fprintf(stderr, "Undeclared identifier: %s\n", expr->data.ident->ident.value);
                 exit(EXIT_FAILURE);
             }
-            const Variable *var = var_find(g, expr->data.ident.ident.value);
+            const Variable *var = var_find(g, expr->data.ident->ident.value);
             push(g, "QWORD [rsp + %zu]", (g->stack_size - var->stack_loc - 1)*8);
             break;
 
@@ -93,19 +104,19 @@ static void gen_stmt(Generator *g, const NodeStmt *stmt) {
     switch (stmt->type) {
 
         case STMT_EXIT:
-            gen_expr(g, &stmt->data.exit.expr);
+            gen_expr(g, stmt->data.exit->expr);
             sb_append(g->sb, "\tmov rax, 60\n");
             pop(g, "rdi");
             sb_append(g->sb, "\tsyscall\n");
             break;
 
         case STMT_LET:
-            if (var_contains(g, stmt->data.let.ident.value)) {
-                fprintf(stderr, "Identifier already used: %s\n", stmt->data.let.ident.value);
+            if (var_contains(g, stmt->data.let->ident.value)) {
+                fprintf(stderr, "Identifier already used: %s\n", stmt->data.let->ident.value);
                 exit(EXIT_FAILURE);
             }
-            var_append(g, stmt->data.let.ident.value);
-            gen_expr(g, &stmt->data.let.expr);
+            var_append(g, stmt->data.let->ident.value);
+            gen_expr(g, stmt->data.let->expr);
             break;
 
         default:
@@ -116,8 +127,10 @@ static void gen_stmt(Generator *g, const NodeStmt *stmt) {
 char *gen_prog(Generator *g) {
     sb_append(g->sb, "global _start\n_start:\n");
 
-    for (size_t i = 0; i < g->prog->stmts.size; i++) {
-        gen_stmt(g, &g->prog->stmts.stmts[i]);
+    NodeStmtList *stmt = g->prog->stmts;
+    while (stmt) {
+        gen_stmt(g, stmt->stmt);
+        stmt = stmt->next;
     }
 
     sb_append(g->sb,

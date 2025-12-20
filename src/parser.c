@@ -6,10 +6,22 @@
 #include "parser.h"
 #include "tokenization.h"
 
-void parser_init(Parser *p, const TokenArray *arr) {
+Parser *parser_create(const TokenArray *arr) {
+    Parser *p = malloc(sizeof(Parser));
+    if (!p) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
     p->tokens = arr->tokens;
     p->size = arr->size;
     p->pos = 0;
+    p->arena = arena_create(1024 * 1024 * 4);  // 4 mb
+    return p;
+}
+
+void parser_destroy(Parser *p) {
+    free(p);
+    arena_destroy(p->arena);
 }
 
 static Token parser_peek(const Parser *p, size_t offset) {
@@ -23,19 +35,34 @@ static Token parser_consume(Parser *p) {
     return p->tokens[p->pos++];
 }
 
-static NodeExpr parse_expr(Parser *p) {
-    if (parser_peek(p, PEEK_CURRENT).type == TOKEN_INT_LITERAL) {
-        return (NodeExpr) { .type = EXPR_INT_LIT, .data.int_lit = (NodeExprLit) { .int_lit = parser_consume(p) } };
-    }
-    else if (parser_peek(p, PEEK_CURRENT).type == TOKEN_IDENT) {
-        return (NodeExpr) { .type = EXPR_IDENT, .data.ident = (NodeExprIdent) { .ident = parser_consume(p) } };
-    }
-    else {
-        return (NodeExpr) { .type = EXPR_INVALID };
+static NodeExpr *parse_expr(Parser *p) {
+
+    switch (parser_peek(p, PEEK_CURRENT).type) {
+
+        case TOKEN_INT_LITERAL: {
+            NodeExprLit *expr_int_lit = arena_alloc(p->arena, sizeof(NodeExprLit));
+            expr_int_lit->int_lit = parser_consume(p);
+            NodeExpr *expr = arena_alloc(p->arena, sizeof(NodeExpr));
+            expr->type = EXPR_INT_LIT;
+            expr->data.int_lit = expr_int_lit;
+            return expr;
+        }
+
+        case TOKEN_IDENT: {
+            NodeExprIdent *expr_ident = arena_alloc(p->arena, sizeof(NodeExprIdent));
+            expr_ident->ident = parser_consume(p);
+            NodeExpr *expr = arena_alloc(p->arena, sizeof(NodeExpr));
+            expr->type = EXPR_IDENT;
+            expr->data.ident = expr_ident;
+            return expr;
+        }
+
+        default:
+            return NULL;
     }
 }
 
-static NodeStmt parse_stmt(Parser *p) {
+static NodeStmt *parse_stmt(Parser *p) {
     const Token t = parser_peek(p, PEEK_CURRENT);
     parser_consume(p);
 
@@ -43,8 +70,9 @@ static NodeStmt parse_stmt(Parser *p) {
 
         case TOKEN_EXIT: {
 
-            NodeStmt node_stmt = { .type = STMT_EXIT };
-            NodeExpr node_expr = { .type = EXPR_INVALID };  // start invalid
+            NodeStmt *node_stmt = arena_alloc(p->arena, sizeof(NodeStmt));
+            node_stmt->type = STMT_EXIT;
+            node_stmt->data.exit = arena_alloc(p->arena, sizeof(NodeStmtExit));
 
             if (parser_peek(p, PEEK_CURRENT).type == TOKEN_OPEN_PAREN) {
                 parser_consume(p);
@@ -53,10 +81,10 @@ static NodeStmt parse_stmt(Parser *p) {
                 exit(EXIT_FAILURE);
             }
 
-            node_expr = parse_expr(p);
-            if (node_expr.type != EXPR_INVALID) { 
+            NodeExpr *node_expr = parse_expr(p);
+            if (node_expr) { 
 
-                node_stmt.data.exit.expr = node_expr; 
+                node_stmt->data.exit->expr = node_expr; 
 
                 if (parser_peek(p, PEEK_CURRENT).type == TOKEN_CLOSE_PAREN) {
                     parser_consume(p);
@@ -82,11 +110,12 @@ static NodeStmt parse_stmt(Parser *p) {
 
         case TOKEN_LET: {
 
-            NodeStmt node_stmt = { .type = STMT_LET };
-            NodeExpr node_expr = { .type = EXPR_INVALID };  // start invalid
+            NodeStmt *node_stmt = arena_alloc(p->arena, sizeof(NodeStmt));
+            node_stmt->type = STMT_LET;
+            node_stmt->data.let = arena_alloc(p->arena, sizeof(NodeStmtLet));
 
             if (parser_peek(p, PEEK_CURRENT).type == TOKEN_IDENT) {
-                node_stmt.data.let.ident = parser_consume(p);
+                node_stmt->data.let->ident = parser_consume(p);
             } else {
                 fprintf(stderr, "Expected Identifier\n");
                 exit(EXIT_FAILURE);
@@ -99,10 +128,10 @@ static NodeStmt parse_stmt(Parser *p) {
                 exit(EXIT_FAILURE);
             }
 
-            node_expr = parse_expr(p);
-            if (node_expr.type != EXPR_INVALID) {
+            NodeExpr *node_expr = parse_expr(p);
+            if (node_expr) {
 
-                node_stmt.data.let.expr = node_expr;
+                node_stmt->data.let->expr = node_expr;
 
                 if (parser_peek(p, PEEK_CURRENT).type == TOKEN_SEMICOLON) {
                     parser_consume(p);
@@ -120,42 +149,10 @@ static NodeStmt parse_stmt(Parser *p) {
         }
 
         default: {
-            return (NodeStmt) { .type = STMT_INVALID };
+            return NULL;
         }
 
     }
-}
-
-static void node_stmt_array_init(NodeStmtArray *arr) {
-    arr->size = 0;
-    arr->capacity = 4;
-    arr->stmts = malloc(sizeof(NodeStmt) * arr->capacity);  // caller frees with node_stmt_array_free
-    if (!arr->stmts) {
-        perror("malloc");
-        exit(EXIT_FAILURE);
-    }
-}
-
-static void node_stmt_array_push(NodeStmtArray *arr, NodeStmt stmt) {
-    if (arr->size == arr->capacity) {
-        arr->capacity *= 2;
-        NodeStmt *new_stmts = realloc(arr->stmts, sizeof(NodeStmt) * arr->capacity);
-        if (!new_stmts) {
-            perror("realloc");
-            free(arr->stmts);
-            exit(EXIT_FAILURE);
-        }
-        arr->stmts = new_stmts;
-    }
-    arr->stmts[arr->size++] = stmt;
-}
-
-static void node_stmt_array_free(NodeStmtArray *arr) {
-    if (!arr) return;
-    free(arr->stmts);
-    arr->stmts = NULL;
-    arr->size = 0;
-    arr->capacity = 0;
 }
 
 NodeProg parse_prog(Parser *p) {
@@ -164,16 +161,28 @@ NodeProg parse_prog(Parser *p) {
     }
 
     NodeProg prog;
-    node_stmt_array_init(&prog.stmts);  // caller frees with node_stmt_array_free
+    NodeStmtListBuilder ll = {0};
 
     while (parser_peek(p, PEEK_CURRENT).type != TOKEN_INVALID) {
-        NodeStmt stmt = parse_stmt(p);
-        if (stmt.type != STMT_INVALID) {
-            node_stmt_array_push(&prog.stmts, stmt);
+
+        NodeStmt *stmt = parse_stmt(p);
+
+        if (stmt) {
+
+            NodeStmtList *node = arena_alloc(p->arena, sizeof(NodeStmtList));
+            node->stmt = stmt;
+            node->next = NULL;
+
+            if (!ll.head) ll.head = node;
+            else ll.tail->next = node;
+            ll.tail = node;
+            ll.size++;
+
         } else {
             fprintf(stderr, "Invalid statement\n");
             exit(EXIT_FAILURE);
         }
     }
+    prog.stmts = ll.head;
     return prog;
 }

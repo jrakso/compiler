@@ -76,22 +76,17 @@ int main(int argc, char *argv[]) {
 
     TokenArray tokens = tokenize(src);  // caller frees with token_array_free
 
-    Parser parser;
-    parser_init(&parser, &tokens);
-    NodeProg prog = parse_prog(&parser);
-    if (!prog.stmts.stmts) {
-        return 1;
-    }
+    Parser *p = parser_create(&tokens);
+    NodeProg prog = parse_prog(p);
 
-    Generator g;
-    generator_init(&g, &prog);
-    char *output = gen_prog(&g);
+    Generator *g = generator_create(&prog);
+    char *output = gen_prog(g);
 
     write_file("output.asm", output);
 
-    free(output);  // frees memory allocated by generate
-    token_array_free(&tokens);  // frees tokens and values allocated by tokenize
-    free(src);  // frees buffer allocated by read_file
-
+    free(src);
+    token_array_free(&tokens);
+    parser_destroy(p);
+    generator_destroy(g);
     return 0;
 }

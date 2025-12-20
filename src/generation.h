@@ -21,5 +21,6 @@ typedef struct {
     VariableTable vars;
 } Generator;
 
-void generator_init(Generator *g, NodeProg *prog);
+Generator *generator_create(NodeProg *prog);
 char *gen_prog(Generator *g);
+void generator_destroy(Generator *g);
