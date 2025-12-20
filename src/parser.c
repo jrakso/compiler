@@ -20,8 +20,8 @@ Parser *parser_create(const TokenArray *arr) {
 }
 
 void parser_destroy(Parser *p) {
-    free(p);
     arena_destroy(p->arena);
+    free(p);
 }
 
 static Token parser_peek(const Parser *p, size_t offset) {

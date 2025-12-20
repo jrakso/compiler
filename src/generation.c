@@ -5,10 +5,25 @@
 
 #include "generation.h"
 
+static void var_free(Generator *g) {
+    VariableTable *t = &g->vars;
+    for (size_t i = 0; i < t->size; i++) {
+        free(t->vars[i].name);
+    }
+
+    free(t->vars);
+    t->vars = NULL;
+    t->size = 0;
+    t->capacity = 0;
+}
+
 static void var_append(Generator *g, const char *name) {
     VariableTable *t = &g->vars;
 
     if (t->size == t->capacity) {
+        if (t->capacity == 0) {
+            t->capacity = 1;
+        }
         t->capacity *= 2;
         t->vars = realloc(t->vars, t->capacity * sizeof(Variable));
         if (!t->vars) {
@@ -23,7 +38,7 @@ static void var_append(Generator *g, const char *name) {
 }
 
 static Variable *var_find(Generator *g, const char *name) {
-    for (size_t i = 0; g->vars.size; i++) {
+    for (size_t i = 0; i < g->vars.size; i++) {
         if (strcmp(g->vars.vars[i].name, name) == 0) {
             return &g->vars.vars[i];
         }
@@ -43,7 +58,7 @@ static bool var_contains(Generator *g, const char *name) {
 static void push(Generator *g, const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
-    sb_append_fmt(g->sb, "\tpush ");
+    sb_append(g->sb, "\tpush ");
     sb_append_fmtv(g->sb, fmt, args);
     sb_append(g->sb, "\n");
     va_end(args);
@@ -70,10 +85,12 @@ Generator *generator_create(NodeProg *prog) {
     sb_init(g->sb);
     g->stack_size = 0;
     g->vars = (VariableTable ){ .capacity = 0, .size = 0, .vars = NULL };
+    return g;
 }
 
 void generator_destroy(Generator *g) {
     sb_free(g->sb);
+    var_free(g);
     free(g->sb);
     free(g);
 }
@@ -133,10 +150,10 @@ char *gen_prog(Generator *g) {
         stmt = stmt->next;
     }
 
-    sb_append(g->sb,
-        "\tmov rax, 60\n"
-        "\tmov rdi, 0\n"
-        "\tsyscall\n");
+    // sb_append(g->sb,
+    //     "\tmov rax, 60\n"
+    //     "\tmov rdi, 0\n"
+    //     "\tsyscall\n");
 
     return g->sb->data;
 }
