@@ -1,7 +1,7 @@
 #pragma once
 
-#include "tokenization.h"
-#include "arena.h"
+#include "tokenization/tokenization.h"
+#include "helpers/arena.h"
 
 // Forward declarations for pointer references
 typedef struct NodeExpr NodeExpr;

@@ -4,7 +4,7 @@
 #include <ctype.h>
 
 #include "parser.h"
-#include "tokenization.h"
+#include "tokenization/tokenization.h"
 
 void parser_init(Parser *p, const TokenArray *arr) {
     p->tokens = arr->tokens;

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "parser.h"
-#include "strbuilder.h"
+#include "parser/parser.h"
+#include "helpers/strbuilder.h"
 #include "vartable.h"
 
 typedef struct {

@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "file.h"
-#include "tokenization.h"
-#include "parser.h"
-#include "generation.h"
+#include "helpers/file.h"
+#include "tokenization/tokenization.h"
+#include "parser/parser.h"
+#include "codegen/generation.h"
 
 int main(int argc, char *argv[]) {
     if (argc != 2) {
