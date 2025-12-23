@@ -6,22 +6,15 @@
 #include "parser.h"
 #include "tokenization.h"
 
-Parser *parser_create(const TokenArray *arr) {
-    Parser *p = malloc(sizeof(Parser));
-    if (!p) {
-        perror("malloc");
-        exit(EXIT_FAILURE);
-    }
+void parser_init(Parser *p, const TokenArray *arr) {
     p->tokens = arr->tokens;
     p->size = arr->size;
     p->pos = 0;
     p->arena = arena_create(1024 * 1024 * 4);  // 4 mb
-    return p;
 }
 
-void parser_destroy(Parser *p) {
+void parser_free(Parser *p) {
     arena_destroy(p->arena);
-    free(p);
 }
 
 static Token parser_peek(const Parser *p, size_t offset) {

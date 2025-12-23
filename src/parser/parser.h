@@ -111,6 +111,6 @@ typedef struct {
 } Parser;
 
 // ─── Function Declarations ─────────────────────────────
-Parser *parser_create(const TokenArray *arr);
+void parser_init(Parser *p, const TokenArray *arr);
 NodeProg parse_prog(Parser *p);
-void parser_destroy(Parser *p);
+void parser_free(Parser *p);
