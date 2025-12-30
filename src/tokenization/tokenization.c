@@ -115,6 +115,17 @@ TokenArray tokenize(const char *src) {
             token_array_append(&tokens, (Token){ .type = TOKEN_EQ, .value = NULL });
         }
 
+        else if (c == '+') {
+            tokenizer_consume(&t);
+            token_array_append(&tokens, (Token){ .type = TOKEN_PLUS, .value = NULL });
+        }
+
+        else if (c == '*') {
+            tokenizer_consume(&t);
+            token_array_append(&tokens, (Token){ .type = TOKEN_MULTI, .value = NULL });
+        }
+
+
         else if (c == ';') {
             tokenizer_consume(&t);
             token_array_append(&tokens, (Token){ .type = TOKEN_SEMICOLON, .value = NULL });

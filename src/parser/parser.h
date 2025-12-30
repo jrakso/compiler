@@ -5,23 +5,27 @@
 
 // Forward declarations for pointer references
 typedef struct NodeExpr NodeExpr;
-typedef struct BinExpr BinExpr;
-typedef struct BinExprMulti BinExprMulti;
-typedef struct BinExprAdd BinExprAdd;
+typedef struct NodeBinExpr NodeBinExpr;
+typedef struct NodeBinExprMulti NodeBinExprMulti;
+typedef struct NodeBinExprAdd NodeBinExprAdd;
 typedef struct NodeStmt NodeStmt;
 typedef struct NodeStmtList NodeStmtList;
+typedef struct NodeTerm NodeTerm;
 
 // ─── Enums ─────────────────────────────────────────────
 typedef enum {
     BIN_INVALID,
     BIN_MULTI,
     BIN_ADD
-} BinExprType;
+} NodeBinExprType;
 
 typedef enum {
-    EXPR_INVALID,
-    EXPR_INT_LIT,
-    EXPR_IDENT,
+    TERM_INT_LIT,
+    TERM_IDENT
+} NodeTermType;
+
+typedef enum {
+    EXPR_TERM,
     EXPR_BIN
 } NodeExprType;
 
@@ -34,35 +38,42 @@ typedef enum {
 // ─── Expression Nodes ──────────────────────────────────
 typedef struct {
     Token int_lit;
-} NodeExprLit;
+} NodeTermIntLit;
 
 typedef struct {
     Token ident;
-} NodeExprIdent;
+} NodeTermIdent;
 
-struct BinExpr {
-    BinExprType type;
+struct NodeBinExpr {
+    NodeBinExprType type;
     union {
-        BinExprMulti *multi;
-        BinExprAdd *add;
+        NodeBinExprMulti *multi;
+        NodeBinExprAdd *add;
+    } data;
+};
+
+struct NodeTerm {
+    NodeTermType type;
+    union {
+        NodeTermIntLit *int_lit;
+        NodeTermIdent *ident;
     } data;
 };
 
 struct NodeExpr {
     NodeExprType type;
     union {
-        NodeExprLit *int_lit;
-        NodeExprIdent *ident;
-        BinExpr *bin;
+        NodeBinExpr *bin;
+        NodeTerm *term;
     } data;
 };
 
-struct BinExprMulti {
+struct NodeBinExprMulti {
     NodeExpr *lhs;
     NodeExpr *rhs;
 };
 
-struct BinExprAdd {
+struct NodeBinExprAdd {
     NodeExpr *lhs;
     NodeExpr *rhs;
 };

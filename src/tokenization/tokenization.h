@@ -15,7 +15,9 @@ typedef enum {
     TOKEN_CLOSE_PAREN,
     TOKEN_IDENT,
     TOKEN_LET,
-    TOKEN_EQ
+    TOKEN_EQ,
+    TOKEN_PLUS,
+    TOKEN_MULTI
 } TokenType;
 
 typedef struct {

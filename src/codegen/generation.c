@@ -32,26 +32,49 @@ void generator_free(Generator *g) {
     var_table_free(&g->vars);
 }
 
-static void gen_expr(Generator *g, const NodeExpr *expr) {
-    switch (expr->type) {
-
-        case EXPR_INT_LIT:
-            sb_append_fmt(&g->sb, "\tmov rax, %s\n", expr->data.int_lit->int_lit.value);
+static void gen_term(Generator *g, const NodeTerm *term) {
+    switch (term->type) {
+        
+        case TERM_INT_LIT:
+            sb_append_fmt(&g->sb, "\tmov rax, %s\n", term->data.int_lit->int_lit.value);
             push(g, "rax");
             break;
 
-        case EXPR_IDENT:
-            if (!var_table_contains(&g->vars, expr->data.ident->ident.value)) {
-                fprintf(stderr, "Undeclared identifier: %s\n", expr->data.ident->ident.value);
+        case TERM_IDENT:
+            if (!var_table_contains(&g->vars, term->data.ident->ident.value)) {
+                fprintf(stderr, "Undeclared identifier: %s\n", term->data.ident->ident.value);
                 exit(EXIT_FAILURE);
             }
-            const Variable *var = var_table_find(&g->vars, expr->data.ident->ident.value);
+            const Variable *var = var_table_find(&g->vars, term->data.ident->ident.value);
             push(g, "QWORD [rsp + %zu]", (g->stack_size - var->stack_loc - 1)*8);
             break;
 
         default:
             break;
+
     }
+}
+
+static void gen_expr(Generator *g, const NodeExpr *expr) {
+    switch (expr->type) {
+
+        case EXPR_TERM:
+            gen_term(g, expr->data.term);
+            break;
+
+        case EXPR_BIN:
+            gen_expr(g, expr->data.bin->data.add->lhs);
+            gen_expr(g, expr->data.bin->data.add->rhs);
+            pop(g, "rax");
+            pop(g, "rbx");
+            sb_append(&g->sb, "\tadd rax, rbx\n");
+            push(g, "rax");
+            break;
+
+        default:
+            break;
+    }
+
 }
 
 static void gen_stmt(Generator *g, const NodeStmt *stmt) {

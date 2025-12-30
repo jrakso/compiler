@@ -6,6 +6,8 @@
 #include "parser.h"
 #include "tokenization/tokenization.h"
 
+static NodeExpr *parse_expr(Parser *p);
+
 void parser_init(Parser *p, const TokenArray *arr) {
     p->tokens = arr->tokens;
     p->size = arr->size;
@@ -28,30 +30,76 @@ static Token parser_consume(Parser *p) {
     return p->tokens[p->pos++];
 }
 
-static NodeExpr *parse_expr(Parser *p) {
-
+static NodeTerm *parse_term(Parser *p) {
     switch (parser_peek(p, PEEK_CURRENT).type) {
 
         case TOKEN_INT_LITERAL: {
-            NodeExprLit *expr_int_lit = arena_alloc(p->arena, sizeof(NodeExprLit));
-            expr_int_lit->int_lit = parser_consume(p);
-            NodeExpr *expr = arena_alloc(p->arena, sizeof(NodeExpr));
-            expr->type = EXPR_INT_LIT;
-            expr->data.int_lit = expr_int_lit;
-            return expr;
+            NodeTermIntLit *term_int_lit = arena_alloc(p->arena, sizeof(NodeTermIntLit));
+            term_int_lit->int_lit = parser_consume(p);
+            NodeTerm *term = arena_alloc(p->arena, sizeof(NodeTerm));
+            term->type = TERM_INT_LIT;
+            term->data.int_lit = term_int_lit;
+            return term;
         }
 
         case TOKEN_IDENT: {
-            NodeExprIdent *expr_ident = arena_alloc(p->arena, sizeof(NodeExprIdent));
-            expr_ident->ident = parser_consume(p);
-            NodeExpr *expr = arena_alloc(p->arena, sizeof(NodeExpr));
-            expr->type = EXPR_IDENT;
-            expr->data.ident = expr_ident;
-            return expr;
+            NodeTermIdent *term_ident = arena_alloc(p->arena, sizeof(NodeTermIdent));
+            term_ident->ident = parser_consume(p);
+            NodeTerm *term = arena_alloc(p->arena, sizeof(NodeTerm));
+            term->type = TERM_IDENT;
+            term->data.ident = term_ident;
+            return term;
         }
 
-        default:
+        default: {
             return NULL;
+        }
+
+    }
+}
+
+static NodeExpr *parse_expr(Parser *p) {
+    NodeTerm *term = parse_term(p);
+    if (term) {
+        switch (parser_peek(p, PEEK_CURRENT).type) {
+
+            case TOKEN_PLUS: {
+                parser_consume(p);
+                NodeExpr *lhs_expr = arena_alloc(p->arena, sizeof(NodeExpr));
+                lhs_expr->type = EXPR_TERM;
+                lhs_expr->data.term = term;
+                NodeExpr *rhs_expr = parse_expr(p);
+                if (!rhs_expr) {
+                    fprintf(stderr, "Expected expression\n");
+                    exit(EXIT_FAILURE);
+                }
+                NodeBinExprAdd *bin_expr_add = arena_alloc(p->arena, sizeof(NodeBinExprAdd));
+                bin_expr_add->lhs = lhs_expr;
+                bin_expr_add->rhs = rhs_expr;
+                NodeBinExpr *bin_expr = arena_alloc(p->arena, sizeof(NodeBinExpr));
+                bin_expr->type = BIN_ADD;
+                bin_expr->data.add = bin_expr_add;
+                NodeExpr *expr = arena_alloc(p->arena, sizeof(NodeExpr));
+                expr->type = EXPR_BIN;
+                expr->data.bin = bin_expr;
+                return expr;
+            }
+
+            case TOKEN_MULTI: {
+                fprintf(stderr, "Unsupported binary operator\n");
+                exit(EXIT_FAILURE);
+            }
+            
+            default: {
+                NodeExpr *expr = arena_alloc(p->arena, sizeof(NodeExpr));
+                expr->type = EXPR_TERM;
+                expr->data.term = term;
+                return expr;
+            }
+
+        }
+    } else {
+        return NULL;
     }
 }
 
@@ -166,8 +214,11 @@ NodeProg parse_prog(Parser *p) {
             node->stmt = stmt;
             node->next = NULL;
 
-            if (!ll.head) ll.head = node;
-            else ll.tail->next = node;
+            if (!ll.head) {
+                ll.head = node;
+            } else {
+                ll.tail->next = node;
+            }
             ll.tail = node;
             ll.size++;
 
