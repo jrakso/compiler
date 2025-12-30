@@ -1,1 +1,1 @@
-# My Project - my own compiler
+# My own compiler
