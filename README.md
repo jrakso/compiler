@@ -1,1 +1,1 @@
-# My Project - my own compiler called spy (swedish python)
+# My Project - my own compiler
