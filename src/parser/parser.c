@@ -30,6 +30,15 @@ static Token parser_consume(Parser *p) {
     return p->tokens[p->pos++];
 }
 
+static Token parser_expect(Parser *p, TokenType type, const char *err) {
+    if (parser_peek(p, PEEK_CURRENT).type == type) {
+        return parser_consume(p);
+    } else {
+        fprintf(stderr, "%s", err);
+        exit(EXIT_FAILURE);
+    }
+}
+
 static NodeTerm *parse_term(Parser *p) {
     switch (parser_peek(p, PEEK_CURRENT).type) {
 
@@ -114,33 +123,13 @@ static NodeStmt *parse_stmt(Parser *p) {
             NodeStmt *node_stmt = arena_alloc(p->arena, sizeof(NodeStmt));
             node_stmt->type = STMT_EXIT;
             node_stmt->data.exit = arena_alloc(p->arena, sizeof(NodeStmtExit));
-
-            if (parser_peek(p, PEEK_CURRENT).type == TOKEN_OPEN_PAREN) {
-                parser_consume(p);
-            } else {
-                fprintf(stderr, "Expected '('\n");
-                exit(EXIT_FAILURE);
-            }
+            parser_expect(p, TOKEN_OPEN_PAREN, "Expected '('\n");
 
             NodeExpr *node_expr = parse_expr(p);
             if (node_expr) { 
-
                 node_stmt->data.exit->expr = node_expr; 
-
-                if (parser_peek(p, PEEK_CURRENT).type == TOKEN_CLOSE_PAREN) {
-                    parser_consume(p);
-                } else {
-                    fprintf(stderr, "Expected ')'\n");
-                    exit(EXIT_FAILURE);
-                }
-
-                if (parser_peek(p, PEEK_CURRENT).type == TOKEN_SEMICOLON) {
-                    parser_consume(p);
-                } else {
-                    fprintf(stderr, "Expected ';'\n");
-                    exit(EXIT_FAILURE);
-                }
-
+                parser_expect(p, TOKEN_CLOSE_PAREN, "Expected ')'\n");
+                parser_expect(p, TOKEN_SEMICOLON, "Expected ';'\n");
                 return node_stmt;
 
             } else {
@@ -154,33 +143,13 @@ static NodeStmt *parse_stmt(Parser *p) {
             NodeStmt *node_stmt = arena_alloc(p->arena, sizeof(NodeStmt));
             node_stmt->type = STMT_LET;
             node_stmt->data.let = arena_alloc(p->arena, sizeof(NodeStmtLet));
-
-            if (parser_peek(p, PEEK_CURRENT).type == TOKEN_IDENT) {
-                node_stmt->data.let->ident = parser_consume(p);
-            } else {
-                fprintf(stderr, "Expected Identifier\n");
-                exit(EXIT_FAILURE);
-            }
-
-            if (parser_peek(p, PEEK_CURRENT).type == TOKEN_EQ) {
-                parser_consume(p);
-            } else {
-                fprintf(stderr, "Expected '='\n");
-                exit(EXIT_FAILURE);
-            }
+            node_stmt->data.let->ident = parser_expect(p, TOKEN_IDENT, "Expected Identifier\n");
+            parser_expect(p, TOKEN_EQ, "Expected '='\n");
 
             NodeExpr *node_expr = parse_expr(p);
             if (node_expr) {
-
                 node_stmt->data.let->expr = node_expr;
-
-                if (parser_peek(p, PEEK_CURRENT).type == TOKEN_SEMICOLON) {
-                    parser_consume(p);
-                } else {
-                    fprintf(stderr, "Expected ';'\n");
-                    exit(EXIT_FAILURE);
-                }
-
+                parser_expect(p, TOKEN_SEMICOLON, "Expected ';'\n");
                 return node_stmt;
 
             } else {
